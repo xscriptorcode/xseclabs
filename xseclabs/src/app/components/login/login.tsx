@@ -6,7 +6,7 @@ export default function Login () {
     const [pass, setPass] = useState<string>("");
     
     return (
-        <div className="flex flex-col gap-2 justify-center text-center items-center">
+        <div className="flex flex-col gap-2 justify-center text-center items-center border p-8 rounded">
             
             <input 
             type="text"
