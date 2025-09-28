@@ -1,9 +1,10 @@
 'use client'
 import { useState } from "react"
 
-export default function Login () {
+export default function Register () {
     const [user, setUser] = useState("");
     const [pass, setPass] = useState("");
+    const [num, setNum] = useState("");
     
     return (
         <div className="flex flex-col items-center m-4">
@@ -22,10 +23,17 @@ export default function Login () {
                 onChange={(e) => setPass(e.target.value)}
                 className="border p-2 rounded-xl"
                 />
+                <input 
+                type="phone"
+                placeholder="phone"
+                value={num}
+                onChange={(e) => setNum(e.target.value)}
+                className="border p-2 rounded-xl"
+                />
                 <button className="text-white px-2 py-2 rounded hover:bg-red-500 border p-4 rounded">
-                    Login
+                    Register
                 </button>
-                <p className="text-xs"><a className="hover:text-yellow-500" href="#"><strong><em>Join Us</em></strong></a></p>
+                <p className="text-xs">Already registered?<a className="hover:text-yellow-500" href="#"><strong><em>Login</em></strong></a></p>
                 <p className="text-xs">Forgot the password?, try <a className="hover:text-yellow-500" href="#"><strong><em>recovery</em></strong></a></p>
             </div>
         </div>
