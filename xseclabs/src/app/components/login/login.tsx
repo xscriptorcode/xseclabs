@@ -6,7 +6,7 @@ export default function Login () {
     const [pass, setPass] = useState<string>("");
     
     return (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center m-4">
             <div className="flex flex-col gap-2 justify-center text-center items-center border p-8 rounded-xl w-64">    
                 <input 
                 type="text"
@@ -24,7 +24,8 @@ export default function Login () {
                 />
                 <button className="text-white px-2 py-2 rounded hover:bg-red-500 border p-4 rounded">
                     Login
-                </button>     
+                </button>
+                <p className="text-xs">Forgot the password?, try <a href="#"><strong><em>recovery</em></strong></a></p>
             </div>
         </div>
     )
