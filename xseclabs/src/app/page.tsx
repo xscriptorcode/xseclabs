@@ -13,7 +13,7 @@ export default function Home() {
     redirect("/login");
   }
 
-  const user = { email: "Pepe", password: "pepecom" };
+// example  const user = { email: "Pepe", password: "pepecom" };
 
   return (
     <div>

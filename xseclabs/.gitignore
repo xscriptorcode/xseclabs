@@ -39,3 +39,26 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Env files - keys and secrets
+.env
+.env.local
+.env.*.local
+supabase/.env
+
+# Supabase Files: CLI
+supabase/.temp
+supabase/.branches
+
+# Local BD files (Docker Vol)
+supabase/.db
+
+# Logs de supabase and docker
+supabase/logs
+*.log
+
+# Node y build
+node_modules
+.next
+dist
+
