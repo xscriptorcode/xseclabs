@@ -9,7 +9,8 @@ type NavbarProps = {
 export function Navbar({ links = [] }: NavbarProps) { 
     
     return (
-    <nav className="flex items-center justify-between px-4 py-2 bg-gray-800 text-white">  
+    <div className="flex justify-center p-8">
+    <nav className="flex items-center justify-between text-center px-4 py-2 bg-(--color-primary) text-(--color-text-secondary) rounded-xl">  
       <ul className="flex space-x-4">
         {links.map((link) => (
           <li key={link.href}>
@@ -20,6 +21,7 @@ export function Navbar({ links = [] }: NavbarProps) {
         ))}
       </ul>
     </nav>
+    </div>
     );
 }
 
