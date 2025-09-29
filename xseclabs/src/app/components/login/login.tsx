@@ -7,20 +7,20 @@ export default function Login () {
     
     return (
         <div className="flex flex-col items-center m-4">
-            <div className="flex flex-col gap-2 justify-center text-center items-center border p-8 rounded-xl w-64">    
+            <div className="flex flex-col gap-2 justify-center text-center items-center border border-(--color-primary) p-8 rounded-xl w-64">    
                 <input 
                 type="text"
                 placeholder="Username"
                 value={user}
                 onChange={(e) => setUser(e.target.value)}
-                className="border p-2 rounded-xl"
+                className="border border border-(--color-primary) p-2 rounded-xl"
                 />
                 <input 
                 type="password"
                 placeholder="Password"
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
-                className="border p-2 rounded-xl"
+                className="border border border-(--color-primary) p-2 rounded-xl"
                 />
                 <button className="text-white px-2 py-2 rounded hover:bg-red-500 border p-4 rounded">
                     Login
