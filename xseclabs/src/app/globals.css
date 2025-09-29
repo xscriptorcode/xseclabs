@@ -2,6 +2,14 @@
 
 
 
+@font-face {
+  font-family: 'Eb-Garamond';
+  src: url('/fonts/EBGaramond-VariableFont_wght.woff2') format('woff2');
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --color-bg: #ffffff;
   --color-text: #111111;
@@ -14,4 +22,8 @@
   --color-text: #f9f9f9;
   --color-primary: #0fa35e;
   --color-text-secondary: #111111;
+}
+
+body {
+  font-family: 'Eb-Garamond', serif, sans-serif;
 }
