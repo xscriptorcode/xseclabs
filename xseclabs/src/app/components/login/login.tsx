@@ -22,10 +22,10 @@ export default function Login () {
                 onChange={(e) => setPass(e.target.value)}
                 className="border border border-(--color-primary) p-2 rounded-xl"
                 />
-                <button className="text-white px-2 py-2 rounded hover:bg-red-500 border p-4 rounded">
+                <button className="text-(--color-primary) px-2 py-2 rounded hover:bg-(--color-primary) hover:text-(--color-text-secondary) border border-(--color-primary) p-4 rounded">
                     Login
                 </button>
-                <p className="text-xs"><a className="hover:text-yellow-500" href="#"><strong><em>Join Us</em></strong></a></p>
+                <p className="text-xs"><a className="hover:text-yellow-500" href="/register"><strong><em>Join Us</em></strong></a></p>
                 <p className="text-xs">Forgot the password?, try <a className="hover:text-yellow-500" href="#"><strong><em>recovery</em></strong></a></p>
             </div>
         </div>

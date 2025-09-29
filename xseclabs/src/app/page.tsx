@@ -1,12 +1,23 @@
-import Image from "next/image";
 import Login from "./components/login/login";
 import Register from "./components/register/register";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
 
 export default function Home() {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session-token");
+  
+
+  if (!token){
+    redirect("/login");
+  }
+
+  const user = { email: "Pepe", password: "pepecom" };
+
   return (
     <div>
-      <Login />
-      <Register />
+      <h1>Start {user.email}</h1>
     </div>
   );
 }
