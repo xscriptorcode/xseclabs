@@ -5,7 +5,10 @@ import { useRouter } from "next/router";
 
 export default function Login () {
     const [emailOrUsername, setEmailOrUsername] = useState("");
-    
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+        
     return (
         <div className="flex flex-col items-center m-4">
             <div className="flex flex-col gap-2 justify-center text-center items-center border border-(--color-primary) p-8 rounded-xl w-64">    
