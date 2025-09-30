@@ -79,6 +79,8 @@ export default function Login () {
                     })
                     .eq('id_uiid', data.user.id);
                 }
+
+                router.push('/dashboard');
             }
         }
     }
