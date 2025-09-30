@@ -1,8 +1,18 @@
+-- ==========================================================
+-- RESET LIMPIO (orden seguro)
+-- ==========================================================
+drop trigger if exists on_auth_user_created on auth.users;
 
--- ==========================================================
--- RESET LIMPIO
--- ==========================================================
--- Order
+drop function if exists public.handle_new_auth_user() cascade;
+drop function if exists public.is_super_admin() cascade;
+drop function if exists public.has_role(text) cascade;
+drop function if exists public.is_project_member(bigint) cascade;
+drop function if exists public.is_project_owner(bigint) cascade;
+drop function if exists public.member_via_incident(bigint) cascade;
+drop function if exists public.member_via_finding(bigint) cascade;
+
+drop function if exists public.tg_set_updated_at() cascade;
+
 drop table if exists public.incident_techniques cascade;
 drop table if exists public.finding_techniques cascade;
 drop table if exists public.attack_techniques cascade;
@@ -57,10 +67,9 @@ create table public.users (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create index on public.users(roles_id);
 
--- Perfil extendido (misma PK que users para 1:1 limpio)
+-- Perfil extendido (1:1 limpio con users)
 create table public.user_profiles (
   id_uuid uuid primary key references public.users(id_uuid) on delete cascade,
   full_name text,
@@ -73,6 +82,29 @@ create table public.user_profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- ==========================================================
+-- TRIGGER GENERICO updated_at
+-- ==========================================================
+create or replace function public.tg_set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_updated_at_users on public.users;
+create trigger set_updated_at_users
+before update on public.users
+for each row execute function public.tg_set_updated_at();
+
+drop trigger if exists set_updated_at_user_profiles on public.user_profiles;
+create trigger set_updated_at_user_profiles
+before update on public.user_profiles
+for each row execute function public.tg_set_updated_at();
 
 -- ==========================================================
 -- TRIGGER: al crear un auth.user -> crear users + user_profiles
@@ -101,7 +133,6 @@ begin
 end;
 $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_auth_user();
@@ -116,7 +147,6 @@ create table public.projects (
   created_by uuid not null references public.users(id_uuid) on delete restrict,
   created_at timestamptz not null default now()
 );
-
 create index on public.projects(created_by);
 
 create table public.project_members (
@@ -126,7 +156,6 @@ create table public.project_members (
   added_at timestamptz not null default now(),
   primary key (project_id, user_id)
 );
-
 create index on public.project_members(user_id);
 create index on public.project_members(project_id);
 
@@ -144,24 +173,19 @@ create table public.assets (
   notes text,
   created_at timestamptz not null default now()
 );
-
 create index on public.assets(project_id);
 
 -- ==========================================================
 -- CATÁLOGO DE VULNERABILIDADES + HALLAZGOS
 -- ==========================================================
--- CATÁLOGO DE VULNERABILIDADES
 create table public.vuln_catalog (
   vuln_id bigserial primary key,
   code text,
   title text not null,
   description text,
-  refs jsonb,  -- <- nombre seguro
+  refs jsonb,
   created_at timestamptz not null default now()
 );
-
--- Hallazgo concreto (instancia de vulnerabilidad en un activo)
-
 
 create table public.findings (
   finding_id bigserial primary key,
@@ -178,10 +202,13 @@ create table public.findings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create index on public.findings(project_id);
 create index on public.findings(asset_id);
 
+drop trigger if exists set_updated_at_findings on public.findings;
+create trigger set_updated_at_findings
+before update on public.findings
+for each row execute function public.tg_set_updated_at();
 
 -- ==========================================================
 -- INCIDENTES + RELACIONES + TIMELINE
@@ -198,7 +225,6 @@ create table public.incidents (
   created_by uuid references public.users(id_uuid) on delete set null,
   created_at timestamptz not null default now()
 );
-
 create index on public.incidents(project_id);
 
 create table public.incident_assets (
@@ -216,7 +242,6 @@ create table public.incident_events (
   summary text not null,
   details jsonb
 );
-
 create index on public.incident_events(incident_id);
 
 -- ==========================================================
@@ -234,7 +259,6 @@ create table public.evidence (
   added_by uuid references public.users(id_uuid) on delete set null,
   created_at timestamptz not null default now()
 );
-
 create index on public.evidence(project_id);
 
 create table public.attachments (
@@ -249,7 +273,6 @@ create table public.attachments (
   uploaded_by uuid references public.users(id_uuid) on delete set null,
   uploaded_at timestamptz not null default now()
 );
-
 create index on public.attachments(project_id);
 
 create table public.comments (
@@ -261,7 +284,6 @@ create table public.comments (
   body text not null,
   created_at timestamptz not null default now()
 );
-
 create index on public.comments(project_id);
 
 create table public.tasks (
@@ -278,8 +300,12 @@ create table public.tasks (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create index on public.tasks(project_id);
+
+drop trigger if exists set_updated_at_tasks on public.tasks;
+create trigger set_updated_at_tasks
+before update on public.tasks
+for each row execute function public.tg_set_updated_at();
 
 -- ==========================================================
 -- IoCs / ATT&CK
@@ -296,7 +322,6 @@ create table public.iocs (
   created_at timestamptz not null default now(),
   unique (project_id, type, value)
 );
-
 create index on public.iocs(project_id);
 
 create table public.incident_iocs (
@@ -348,76 +373,121 @@ alter table public.finding_techniques  enable row level security;
 alter table public.incident_techniques enable row level security;
 
 -- ==========================================================
+-- HELPERS DE AUTORIZACIÓN (evitan recursividad)
+-- ==========================================================
+create or replace function public.has_role(p_role text)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.users u
+    join public.roles r on r.roles_id = u.roles_id
+    where u.id_uuid = auth.uid() and r.type = p_role
+  );
+$$;
+
+create or replace function public.is_super_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select public.has_role('super_admin');
+$$;
+
+create or replace function public.is_project_member(p_project_id bigint)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.project_members pm
+    where pm.project_id = p_project_id
+      and pm.user_id = auth.uid()
+  ) or exists (
+    select 1
+    from public.projects p
+    where p.project_id = p_project_id
+      and p.created_by = auth.uid()
+  ) or public.is_super_admin();
+$$;
+
+create or replace function public.is_project_owner(p_project_id bigint)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.projects p
+    where p.project_id = p_project_id
+      and p.created_by = auth.uid()
+  ) or public.is_super_admin();
+$$;
+
+create or replace function public.member_via_incident(p_incident_id bigint)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select public.is_project_member(i.project_id)
+  from public.incidents i
+  where i.incident_id = p_incident_id;
+$$;
+
+create or replace function public.member_via_finding(p_finding_id bigint)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select public.is_project_member(f.project_id)
+  from public.findings f
+  where f.finding_id = p_finding_id;
+$$;
+
+-- ==========================================================
 -- POLICIES: USERS / PROFILES / ROLES (GLOBAL)
 -- ==========================================================
-
--- (A) USERS: cada usuario gestiona SOLO su fila
-create policy users_self_all
+create policy users_self_select
 on public.users
-as permissive
-for all
+for select
 to authenticated
-using (id_uuid = auth.uid())
-with check (id_uuid = auth.uid());
+using (id_uuid = auth.uid() or public.is_super_admin());
 
--- (B) USERS: super_admin puede TODO
-create policy users_super_admin_all
+create policy users_self_mutate
 on public.users
-as permissive
 for all
 to authenticated
-using (
-  exists (
-    select 1
-    from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
-);
+using (id_uuid = auth.uid() or public.is_super_admin())
+with check (id_uuid = auth.uid() or public.is_super_admin());
 
--- (C) USER_PROFILES: self-access
-create policy profiles_self_all
+create policy profiles_self_select
 on public.user_profiles
-as permissive
-for all
+for select
 to authenticated
-using (id_uuid = auth.uid())
-with check (id_uuid = auth.uid());
+using (id_uuid = auth.uid() or public.is_super_admin());
 
--- (D) USER_PROFILES: super_admin all
-create policy profiles_super_admin_all
+create policy profiles_self_mutate
 on public.user_profiles
-as permissive
 for all
 to authenticated
-using (
-  exists (
-    select 1
-    from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
-);
+using (id_uuid = auth.uid() or public.is_super_admin())
+with check (id_uuid = auth.uid() or public.is_super_admin());
 
--- (E) ROLES:
---     - lectura para cualquier autenticado
---     - inserción/actualización/borrado solo super_admin
 create policy roles_read_all
 on public.roles
 for select
@@ -428,127 +498,248 @@ create policy roles_super_admin_insert
 on public.roles
 for insert
 to authenticated
-with check (
-  exists (
-    select 1 from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
-);
+with check (public.is_super_admin());
 
 create policy roles_super_admin_update
 on public.roles
 for update
 to authenticated
-using (
-  exists (
-    select 1 from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
-)
-with check (
-  exists (
-    select 1 from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
-);
+using (public.is_super_admin())
+with check (public.is_super_admin());
 
 create policy roles_super_admin_delete
 on public.roles
 for delete
 to authenticated
+using (public.is_super_admin());
+
+-- ==========================================================
+-- POLICIES POR MEMBRESÍA (SIN RECURSIVIDAD)
+-- *Ajustadas según tu solicitud*
+-- ==========================================================
+
+-- PROJECTS:
+--  select: miembros pueden leer
+create policy projects_select_members
+on public.projects
+for select
+to authenticated
 using (
-  exists (
-    select 1 from public.users u
-    join public.roles r on r.roles_id = u.roles_id
-    where u.id_uuid = auth.uid() and r.type = 'super_admin'
-  )
+    public.is_super_admin() 
+    or created_by = auth.uid()
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = projects.project_id
+          and pm.user_id = auth.uid()
+    )
 );
 
--- ==========================================================
--- POLICIES POR MEMBRESÍA DE PROYECTO (PLANTILLA APLICADA)
--- Un usuario autenticado accede si es miembro del proyecto
--- ==========================================================
-
--- PROJECTS: el owner (created_by) y los miembros tienen RW
-create policy projects_owner_rw
+--  insert: cualquier autenticado puede crear proyectos
+create policy projects_insert_authenticated
 on public.projects
-as permissive
-for all
+for insert
 to authenticated
-using (created_by = auth.uid())
 with check (created_by = auth.uid());
 
-create policy projects_members_rw
+--  update: solo owner o super_admin
+create policy projects_update_owner_or_sa
 on public.projects
-as permissive
-for all
+for update
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = projects.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = projects.project_id
-    and pm.user_id = auth.uid()
-));
+using (
+    public.is_super_admin() 
+    or created_by = auth.uid()
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = projects.project_id
+          and pm.user_id = auth.uid()
+          and pm.role = 'owner'
+    )
+)
+with check (
+    public.is_super_admin() 
+    or created_by = auth.uid()
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = projects.project_id
+          and pm.user_id = auth.uid()
+          and pm.role = 'owner'
+    )
+);
 
--- PROJECT_MEMBERS: el usuario ve sus membresías y el owner gestiona todas
-create policy pmembers_self_read
+--  delete: solo super_admin
+create policy projects_delete_sa_only
+on public.projects
+for delete
+to authenticated
+using (public.is_super_admin());
+
+-- PROJECT_MEMBERS:
+--  select: miembros pueden leer sus propias membresías y las de proyectos donde participan
+create policy pmembers_select_members
 on public.project_members
 for select
 to authenticated
-using (user_id = auth.uid());
+using (
+    public.is_super_admin()
+    or user_id = auth.uid()
+    or exists (
+        select 1
+        from public.projects p
+        where p.project_id = project_members.project_id
+          and p.created_by = auth.uid()
+    )
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = project_members.project_id
+          and pm.user_id = auth.uid()
+    )
+);
 
-create policy pmembers_owner_manage
+--  insert: permitir inserción flexible para creadores de proyectos y super_admin
+create policy pmembers_insert_flexible
 on public.project_members
-as permissive
-for all
+for insert
 to authenticated
-using (exists (
-  select 1 from public.projects p
-  where p.project_id = project_members.project_id
-    and p.created_by = auth.uid()
-))
-with check (exists (
-  select 1 from public.projects p
-  where p.project_id = project_members.project_id
-    and p.created_by = auth.uid()
-));
+with check (
+    public.is_super_admin() 
+    or exists(
+        select 1 from public.projects p 
+        where p.project_id = project_members.project_id 
+        and p.created_by = auth.uid()
+    )
+    or (
+        user_id = auth.uid()
+        and exists(
+            select 1 from public.project_members pm
+            where pm.project_id = project_members.project_id
+            and pm.user_id = auth.uid()
+            and pm.role = 'owner'
+        )
+    )
+);
 
--- Para facilitar, todos los miembros del proyecto pueden ver a los demás miembros
-create policy pmembers_project_read
+--  update: solo creadores de proyecto, owners o super_admin
+create policy pmembers_update_owner_or_sa
 on public.project_members
-for select
+for update
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = project_members.project_id
-    and pm.user_id = auth.uid()
-));
+using (
+    public.is_super_admin()
+    or exists (
+        select 1
+        from public.projects p
+        where p.project_id = project_members.project_id
+          and p.created_by = auth.uid()
+    )
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = project_members.project_id
+          and pm.user_id = auth.uid()
+          and pm.role = 'owner'
+    )
+)
+with check (
+    public.is_super_admin()
+    or exists (
+        select 1
+        from public.projects p
+        where p.project_id = project_members.project_id
+          and p.created_by = auth.uid()
+    )
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = project_members.project_id
+          and pm.user_id = auth.uid()
+          and pm.role = 'owner'
+    )
+);
+
+--  delete: solo creadores de proyecto, owners o super_admin
+create policy pmembers_delete_owner_or_sa
+on public.project_members
+for delete
+to authenticated
+using (
+    public.is_super_admin()
+    or exists (
+        select 1
+        from public.projects p
+        where p.project_id = project_members.project_id
+          and p.created_by = auth.uid()
+    )
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = project_members.project_id
+          and pm.user_id = auth.uid()
+          and pm.role = 'owner'
+    )
+);
 
 -- ASSETS (miembros RW)
-create policy assets_members_rw
+create policy assets_member_select
 on public.assets
-as permissive
+for select
+to authenticated
+using (
+    public.is_super_admin()
+    or exists (
+        select 1
+        from public.projects p
+        where p.project_id = assets.project_id
+          and p.created_by = auth.uid()
+    )
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = assets.project_id
+          and pm.user_id = auth.uid()
+    )
+);
+
+create policy assets_member_mutate
+on public.assets
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = assets.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = assets.project_id
-    and pm.user_id = auth.uid()
-));
+using (
+    public.is_super_admin()
+    or exists (
+        select 1
+        from public.projects p
+        where p.project_id = assets.project_id
+          and p.created_by = auth.uid()
+    )
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = assets.project_id
+          and pm.user_id = auth.uid()
+    )
+)
+with check (
+    public.is_super_admin()
+    or exists (
+        select 1
+        from public.projects p
+        where p.project_id = assets.project_id
+          and p.created_by = auth.uid()
+    )
+    or exists (
+        select 1
+        from public.project_members pm
+        where pm.project_id = assets.project_id
+          and pm.user_id = auth.uid()
+    )
+);
 
--- VULN_CATALOG: solo lectura global para autenticados
+-- VULN_CATALOG: lectura global autenticados
 create policy vuln_catalog_read_all
 on public.vuln_catalog
 for select
@@ -556,241 +747,176 @@ to authenticated
 using (true);
 
 -- FINDINGS (miembros RW)
-create policy findings_members_rw
+create policy findings_member_select
 on public.findings
-as permissive
+for select
+to authenticated
+using (public.is_project_member(project_id));
+
+create policy findings_member_mutate
+on public.findings
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = findings.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = findings.project_id
-    and pm.user_id = auth.uid()
-));
+using (public.is_project_member(project_id))
+with check (public.is_project_member(project_id));
 
 -- INCIDENTS (miembros RW)
-create policy incidents_members_rw
+create policy incidents_member_select
 on public.incidents
-as permissive
+for select
+to authenticated
+using (public.is_project_member(project_id));
+
+create policy incidents_member_mutate
+on public.incidents
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = incidents.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = incidents.project_id
-    and pm.user_id = auth.uid()
-));
+using (public.is_project_member(project_id))
+with check (public.is_project_member(project_id));
 
--- INCIDENT_ASSETS (miembros RW)
-create policy incident_assets_members_rw
+-- INCIDENT_ASSETS (miembros RW vía incidente)
+create policy incident_assets_member_select
 on public.incident_assets
-as permissive
-for all
+for select
 to authenticated
-using (exists (
-  select 1 from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_assets.incident_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_assets.incident_id
-    and pm.user_id = auth.uid()
-));
+using (public.member_via_incident(incident_id));
 
--- INCIDENT_EVENTS (miembros RW)
-create policy incident_events_members_rw
-on public.incident_events
-as permissive
+create policy incident_assets_member_mutate
+on public.incident_assets
 for all
 to authenticated
-using (exists (
-  select 1 from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_events.incident_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_events.incident_id
-    and pm.user_id = auth.uid()
-));
+using (public.member_via_incident(incident_id))
+with check (public.member_via_incident(incident_id));
+
+-- INCIDENT_EVENTS (miembros RW vía incidente)
+create policy incident_events_member_select
+on public.incident_events
+for select
+to authenticated
+using (public.member_via_incident(incident_id));
+
+create policy incident_events_member_mutate
+on public.incident_events
+for all
+to authenticated
+using (public.member_via_incident(incident_id))
+with check (public.member_via_incident(incident_id));
 
 -- EVIDENCE (miembros RW por project_id)
-create policy evidence_members_rw
+create policy evidence_member_select
 on public.evidence
-as permissive
+for select
+to authenticated
+using (public.is_project_member(project_id));
+
+create policy evidence_member_mutate
+on public.evidence
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = evidence.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = evidence.project_id
-    and pm.user_id = auth.uid()
-));
+using (public.is_project_member(project_id))
+with check (public.is_project_member(project_id));
 
 -- ATTACHMENTS (miembros RW)
-create policy attachments_members_rw
+create policy attachments_member_select
 on public.attachments
-as permissive
+for select
+to authenticated
+using (public.is_project_member(project_id));
+
+create policy attachments_member_mutate
+on public.attachments
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = attachments.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = attachments.project_id
-    and pm.user_id = auth.uid()
-));
+using (public.is_project_member(project_id))
+with check (public.is_project_member(project_id));
 
 -- COMMENTS (miembros RW)
-create policy comments_members_rw
+create policy comments_member_select
 on public.comments
-as permissive
+for select
+to authenticated
+using (public.is_project_member(project_id));
+
+create policy comments_member_mutate
+on public.comments
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = comments.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = comments.project_id
-    and pm.user_id = auth.uid()
-));
+using (public.is_project_member(project_id))
+with check (public.is_project_member(project_id));
 
 -- TASKS (miembros RW)
-create policy tasks_members_rw
+create policy tasks_member_select
 on public.tasks
-as permissive
+for select
+to authenticated
+using (public.is_project_member(project_id));
+
+create policy tasks_member_mutate
+on public.tasks
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = tasks.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = tasks.project_id
-    and pm.user_id = auth.uid()
-));
+using (public.is_project_member(project_id))
+with check (public.is_project_member(project_id));
 
 -- IOCs (miembros RW)
-create policy iocs_members_rw
+create policy iocs_member_select
 on public.iocs
-as permissive
+for select
+to authenticated
+using (public.is_project_member(project_id));
+
+create policy iocs_member_mutate
+on public.iocs
 for all
 to authenticated
-using (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = iocs.project_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1 from public.project_members pm
-  where pm.project_id = iocs.project_id
-    and pm.user_id = auth.uid()
-));
+using (public.is_project_member(project_id))
+with check (public.is_project_member(project_id));
 
--- INCIDENT_IOCS (miembros RW a través del incidente)
-create policy incident_iocs_members_rw
+-- INCIDENT_IOCS (miembros RW vía incidente)
+create policy incident_iocs_member_select
 on public.incident_iocs
-as permissive
+for select
+to authenticated
+using (public.member_via_incident(incident_id));
+
+create policy incident_iocs_member_mutate
+on public.incident_iocs
 for all
 to authenticated
-using (exists (
-  select 1
-  from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_iocs.incident_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1
-  from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_iocs.incident_id
-    and pm.user_id = auth.uid()
-));
+using (public.member_via_incident(incident_id))
+with check (public.member_via_incident(incident_id));
 
--- ATT&CK: lectura global (opcional)
+-- ATT&CK: lectura global
 create policy attack_read_all
 on public.attack_techniques
 for select
 to authenticated
 using (true);
 
--- FINDING_TECHNIQUES (miembros RW vía finding -> project_id)
-create policy finding_tech_members_rw
+-- FINDING_TECHNIQUES (miembros RW vía finding)
+create policy finding_tech_member_select
 on public.finding_techniques
-as permissive
+for select
+to authenticated
+using (public.member_via_finding(finding_id));
+
+create policy finding_tech_member_mutate
+on public.finding_techniques
 for all
 to authenticated
-using (exists (
-  select 1
-  from public.findings f
-  join public.project_members pm on pm.project_id = f.project_id
-  where f.finding_id = finding_techniques.finding_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1
-  from public.findings f
-  join public.project_members pm on pm.project_id = f.project_id
-  where f.finding_id = finding_techniques.finding_id
-    and pm.user_id = auth.uid()
-));
+using (public.member_via_finding(finding_id))
+with check (public.member_via_finding(finding_id));
 
--- INCIDENT_TECHNIQUES (miembros RW vía incident -> project_id)
-create policy incident_tech_members_rw
+-- INCIDENT_TECHNIQUES (miembros RW vía incidente)
+create policy incident_tech_member_select
 on public.incident_techniques
-as permissive
+for select
+to authenticated
+using (public.member_via_incident(incident_id));
+
+create policy incident_tech_member_mutate
+on public.incident_techniques
 for all
 to authenticated
-using (exists (
-  select 1
-  from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_techniques.incident_id
-    and pm.user_id = auth.uid()
-))
-with check (exists (
-  select 1
-  from public.incidents i
-  join public.project_members pm on pm.project_id = i.project_id
-  where i.incident_id = incident_techniques.incident_id
-    and pm.user_id = auth.uid()
-));
-
--- ==========================================================
--- (OPCIONAL) SUPER_ADMIN USER
--- change YOUR_AUTH_UID_HERE fot real UUID of Auth > Users
--- ==========================================================
--- insert into public.users (id_uuid, roles_id, is_active)
--- values (
---   'YOUR_AUTH_UID_HERE',
---   (select roles_id from public.roles where type = 'super_admin'),
---   true
--- )
--- on conflict (id_uuid) do update
--- set roles_id = excluded.roles_id, is_active = true;
+using (public.member_via_incident(incident_id))
+with check (public.member_via_incident(incident_id));
