@@ -1,9 +1,10 @@
 'use client'
 import { useState } from "react"
+import { supabase } from "../../../../lib/supabaseClient";
+import { useRouter } from "next/router";
 
 export default function Login () {
-    const [user, setUser] = useState("");
-    const [pass, setPass] = useState("");
+    const [emailOrUsername, setEmailOrUsername] = useState("");
     
     return (
         <div className="flex flex-col items-center m-4">
