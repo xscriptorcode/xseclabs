@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-
-
 @font-face {
   font-family: 'Eb-Garamond';
   src: url('/fonts/EBGaramond-VariableFont_wght.woff2') format('woff2');
@@ -11,26 +9,66 @@
 }
 
 :root {
-  --color-bg: #ffffff;
-  --color-text: #111111;
-  --color-primary: #037a42;
-  --color-text-secondary: #ffffff;
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-text: #1a1a1a;
+  --color-muted: #6b7280;
+  --color-primary: #0fa35e;
+  --color-primary-light: #34d399;
+  --color-accent: #f97316;   
+  --color-border: #e5e7eb;
 }
 
 .dark {
-  --color-bg: #111111;
-  --color-text: #f9f9f9;
-  --color-primary: #0fa35e;
-  --color-text-secondary: #111111;
+  --color-bg: #111827;
+  --color-surface: #1f2937;
+  --color-text: #f9fafb;
+  --color-muted: #9ca3af;
+  --color-primary: #22c55e;
+  --color-primary-light: #4ade80;
+  --color-accent: #fb923c;   
+  --color-border: #374151;
 }
+
 
 body {
   font-family: 'Eb-Garamond', serif, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
 }
 
-h1 {
-  display: flex;
+/* Titles */
+h1, h2, h3 {
   text-align: center;
-  align-items: center;
-  
+  font-weight: 600;
+  margin: 1rem 0;
+  color: var(--color-text);
+}
+
+/* minimalist buttons */
+button {
+  background-color: var(--color-primary);
+  color: var(--color-text-secondary, #fff);
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--color-primary-light);
+}
+
+/* cards */
+.card {
+  background: rgba(255, 255, 255, 0.15); 
+  backdrop-filter: blur(12px);           
+  -webkit-backdrop-filter: blur(12px);   
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
