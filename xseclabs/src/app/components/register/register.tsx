@@ -1,11 +1,21 @@
 'use client'
 import { useState } from "react"
+import { supabase } from "../../../../lib/supabaseClient";
+import { useRouter } from "next/router";
+
 
 export default function Register () {
-    const [user, setUser] = useState("");
-    const [pass, setPass] = useState("");
-    const [num, setNum] = useState("");
-    
+
+    const [user, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [comfirmPassword, setConfirmPassword] = useState("");
+    const [fullName, setFullName] = useState("");
+    const [username, setUsername] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
+    const router = useRouter();
+
     return (
         <div className="flex flex-col items-center m-4">
             <div className="flex flex-col gap-2 justify-center text-center items-center border border border-(--color-primary) p-8 rounded-xl w-64">    
