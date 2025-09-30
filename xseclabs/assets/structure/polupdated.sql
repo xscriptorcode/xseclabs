@@ -96,7 +96,6 @@ begin
 end;
 $$;
 
--- attach updated_at trigger where applicable
 drop trigger if exists set_updated_at_users on public.users;
 create trigger set_updated_at_users
 before update on public.users
@@ -376,8 +375,6 @@ alter table public.incident_techniques enable row level security;
 -- ==========================================================
 -- HELPERS DE AUTORIZACIÓN (evitan recursividad)
 -- ==========================================================
--- Nota: SECURITY DEFINER + search_path fijo; devuelven booleanos.
-
 create or replace function public.has_role(p_role text)
 returns boolean
 language sql
@@ -416,7 +413,6 @@ as $$
     where pm.project_id = p_project_id
       and pm.user_id = auth.uid()
   ) or exists (
-    -- el creador del proyecto también cuenta como miembro implícito
     select 1
     from public.projects p
     where p.project_id = p_project_id
@@ -466,8 +462,6 @@ $$;
 -- ==========================================================
 -- POLICIES: USERS / PROFILES / ROLES (GLOBAL)
 -- ==========================================================
-
--- USERS: cada usuario gestiona SOLO su fila
 create policy users_self_select
 on public.users
 for select
@@ -481,7 +475,6 @@ to authenticated
 using (id_uuid = auth.uid() or public.is_super_admin())
 with check (id_uuid = auth.uid() or public.is_super_admin());
 
--- USER_PROFILES: self + super_admin
 create policy profiles_self_select
 on public.user_profiles
 for select
@@ -495,7 +488,6 @@ to authenticated
 using (id_uuid = auth.uid() or public.is_super_admin())
 with check (id_uuid = auth.uid() or public.is_super_admin());
 
--- ROLES:
 create policy roles_read_all
 on public.roles
 for select
@@ -523,38 +515,68 @@ using (public.is_super_admin());
 
 -- ==========================================================
 -- POLICIES POR MEMBRESÍA (SIN RECURSIVIDAD)
--- Usan funciones booleanas SECURITY DEFINER
+-- *Ajustadas según tu solicitud*
 -- ==========================================================
 
--- PROJECTS: owner RW; miembros R/W (owner implícito en helper)
-create policy projects_member_select
+-- PROJECTS:
+--  select: miembros pueden leer
+create policy projects_select_members
 on public.projects
 for select
 to authenticated
 using (public.is_project_member(project_id));
 
-create policy projects_member_mutate
+--  insert: cualquier autenticado si created_by = auth.uid()
+create policy projects_insert_self
 on public.projects
-for all
+for insert
 to authenticated
-using (public.is_project_owner(project_id))
-with check (public.is_project_owner(project_id));
+with check (created_by = auth.uid());
+
+--  update: solo owner o super_admin
+create policy projects_update_owner_or_sa
+on public.projects
+for update
+to authenticated
+using (public.is_project_owner(project_id) or public.is_super_admin())
+with check (public.is_project_owner(project_id) or public.is_super_admin());
+
+--  delete: solo super_admin
+create policy projects_delete_sa_only
+on public.projects
+for delete
+to authenticated
+using (public.is_super_admin());
 
 -- PROJECT_MEMBERS:
---   - ver miembros si eres miembro del proyecto
---   - gestionar membresías sólo el owner (o super_admin)
-create policy pmembers_member_select
+--  select: miembros pueden leer
+create policy pmembers_select_members
 on public.project_members
 for select
 to authenticated
 using (public.is_project_member(project_id));
 
-create policy pmembers_owner_mutate
+--  insert: solo owner o super_admin puede invitar
+create policy pmembers_insert_owner_or_sa
 on public.project_members
-for all
+for insert
 to authenticated
-using (public.is_project_owner(project_id))
-with check (public.is_project_owner(project_id));
+with check (public.is_project_owner(project_id) or public.is_super_admin());
+
+--  update: (opcional) solo owner o super_admin
+create policy pmembers_update_owner_or_sa
+on public.project_members
+for update
+to authenticated
+using (public.is_project_owner(project_id) or public.is_super_admin())
+with check (public.is_project_owner(project_id) or public.is_super_admin());
+
+--  delete: solo owner o super_admin puede expulsar
+create policy pmembers_delete_owner_or_sa
+on public.project_members
+for delete
+to authenticated
+using (public.is_project_owner(project_id) or public.is_super_admin());
 
 -- ASSETS (miembros RW)
 create policy assets_member_select
@@ -633,7 +655,7 @@ to authenticated
 using (public.member_via_incident(incident_id))
 with check (public.member_via_incident(incident_id));
 
--- EVIDENCE (miembros RW por project_id directo)
+-- EVIDENCE (miembros RW por project_id)
 create policy evidence_member_select
 on public.evidence
 for select
