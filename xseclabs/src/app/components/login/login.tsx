@@ -56,8 +56,29 @@ export default function Login () {
                 loginData = await supabase.auth.signInWithPassword({
                     email: userData.email,
                     password: password,
-                })
+                });
 
+            }
+
+            const {data, error} = loginData;
+
+            if (error) {
+                if (error.message,includes('Invalid login credentials')){
+                    setError('Invalid credentials. Please verify your email/user and password.')
+                } else {
+                    setError('Error logging: ' + error.message);
+                }
+            } else {
+                // update last_login in user_profiles
+                if(data.user){
+                    await supabase
+                    .from('user_profiles')
+                    .update({
+                        last_login: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id_uiid', data.user.id);
+                }
             }
         }
     }
