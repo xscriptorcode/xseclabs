@@ -63,7 +63,7 @@ export default function Login () {
             const {data, error} = loginData;
 
             if (error) {
-                if (error.message,includes('Invalid login credentials')){
+                if (error.message.includes('Invalid login credentials')){
                     setError('Invalid credentials. Please verify your email/user and password.')
                 } else {
                     setError('Error logging: ' + error.message);
@@ -82,31 +82,41 @@ export default function Login () {
 
                 router.push('/dashboard');
             }
+        } catch (err) {
+            setError('Unexpected error')
+        } finally {
+            setLoading(false);
         }
-    }
+    };
 
     return (
         <div className="flex flex-col items-center m-4">
             <div className="flex flex-col gap-2 justify-center text-center items-center border border-(--color-primary) p-8 rounded-xl w-64">    
-                <input 
-                type="text"
-                placeholder="Username"
-                value={user}
-                onChange={(e) => setUser(e.target.value)}
-                className="border border border-(--color-primary) p-2 rounded-xl"
-                />
-                <input 
-                type="password"
-                placeholder="Password"
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
-                className="border border border-(--color-primary) p-2 rounded-xl"
-                />
-                <button className="text-(--color-primary) px-2 py-2 rounded hover:bg-(--color-primary) hover:text-(--color-text-secondary) border border-(--color-primary) p-4 rounded">
-                    Login
-                </button>
-                <p className="text-xs"><a className="hover:text-yellow-500" href="/register"><strong><em>Join Us</em></strong></a></p>
-                <p className="text-xs">Forgot the password?, try <a className="hover:text-yellow-500" href="#"><strong><em>recovery</em></strong></a></p>
+                <h2> Sign in</h2>
+                    <input 
+                    type="text"
+                    placeholder="Email/User"
+                    value={emailOrUsername}
+                    onChange={(e) => setEmailOrUsername(e.target.value)}
+                    className="border border border-(--color-primary) p-2 rounded-xl"
+                    required
+                    />
+                    <input 
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="border border border-(--color-primary) p-2 rounded-xl"
+                    required
+                    />
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="text-(--color-primary) px-2 py-2 rounded hover:bg-(--color-primary) hover:text-(--color-text-secondary) border border-(--color-primary) p-4 rounded">
+                        {loading ? 'Logging in...' : 'Login'}
+                    </button>
+                    <p className="text-xs"><a className="hover:text-yellow-500" href="/register"><strong><em>Join Us</em></strong></a></p>
+                    <p className="text-xs">Forgot the password?, try <a className="hover:text-yellow-500" href="#"><strong><em>recovery</em></strong></a></p>
             </div>
         </div>
     )
