@@ -16,7 +16,7 @@ export default function Login () {
         setError("");
 
         try {
-            let loadingData;
+            let loginData;
 
             //check if input is email or username
 
@@ -51,6 +51,12 @@ export default function Login () {
                     setLoading(false);
                     return;
                 }
+
+                //try to login with the found email
+                loginData = await supabase.auth.signInWithPassword({
+                    email: userData.email,
+                    password: password,
+                })
 
             }
         }
