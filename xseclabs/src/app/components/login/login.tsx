@@ -89,6 +89,23 @@ export default function Login () {
         }
     };
 
+    const handleLogin = async () =>{
+        try {
+            await supabase.auth.signOut();
+            router.push('/login');
+        }catch (error){
+            console.error('Error Logging out: ', error);
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="justify-center">
+                <div>loading...</div>
+            </div>
+        )
+    }
+
     return (
         <div className="flex flex-col items-center m-4">
             <div className="flex flex-col gap-2 justify-center text-center items-center border border-(--color-primary) p-8 rounded-xl w-64">    
