@@ -27,6 +27,12 @@ export default function Register () {
             setLoading(false);
             return;
         }
+
+        if (password.length<6){
+            setError("Use at least 6 characters for your password.");
+            setLoading(false);
+            return;
+        }
     }
     return (
         <div className="flex flex-col items-center m-4">
