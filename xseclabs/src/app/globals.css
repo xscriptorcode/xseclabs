@@ -8,26 +8,34 @@
   font-display: swap;
 }
 
+/*Themes*/
+
 :root {
-  --color-bg: #f9fafb;
+  --color-bg: #ffffff;
   --color-surface: #ffffff;
   --color-text: #1a1a1a;
-  --color-muted: #6b7280;
-  --color-primary: #0fa35e;
-  --color-primary-light: #34d399;
-  --color-accent: #f97316;   
-  --color-border: #e5e7eb;
+  --color-muted: #595197;
+  --color-primary: #328490;
+  --color-primary-light: #b3ecf3;
+  --color-accent: #FC618D;
+  --color-border: #e0e0e0;
+
+  --color-success: #7BD88F;
+  --color-warning: #bdaa3c;
 }
 
 .dark {
-  --color-bg: #111827;
-  --color-surface: #1f2937;
+  --color-bg: #000000;
+  --color-surface: #1a1a1a;
   --color-text: #f9fafb;
-  --color-muted: #9ca3af;
-  --color-primary: #22c55e;
-  --color-primary-light: #4ade80;
-  --color-accent: #fb923c;   
-  --color-border: #374151;
+  --color-muted: #948AE3;
+  --color-primary: #5AD4E6;
+  --color-primary-light: #7BDCF0;
+  --color-accent: #FC618D;
+  --color-border: #333333;
+
+  --color-success: #7BD88F;
+  --color-warning: #FCE566;
 }
 
 
