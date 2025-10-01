@@ -8,7 +8,7 @@ export default function Register () {
 
     const [user, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [comfirmPassword, setConfirmPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [fullName, setFullName] = useState("");
     const [username, setUsername] = useState("");
     const [loading, setLoading] = useState(false);
@@ -22,7 +22,7 @@ export default function Register () {
             setError("");
             setSuccess("");
         
-        if (password !== ConfirmPassword){
+        if (password !== confirmPassword){
             setError("Use the same passord");
             setLoading(false);
             return;
@@ -32,6 +32,49 @@ export default function Register () {
             setError("Use at least 6 characters for your password.");
             setLoading(false);
             return;
+        }
+
+        if (!fullName.trim()){
+            setError("Full name is required");
+            setLoading(false);
+            return;
+        }
+
+        if(!username.trim()) {
+            setError("UserName is required");
+            setLoading(false);
+            return;
+        }
+
+        try {
+
+            // first, sign up the user with supabase auth
+            const { data: authData, error: authError} = await supabase.auth.signUp({
+                email: setEmail,
+                password: password,
+            });
+
+            if (authError){
+                setError(authError.message);
+                setLoading(false);
+                return;
+            }
+
+            if (authData.user){
+                const {error: profileError} = await supabase
+                .form('user_profiles')
+                .update({
+                    full_name: fullName,
+                    username: username,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id_uuid', authData.user.id);
+
+                if (profileError){
+                    console.error('Errror updating profile: ', profileError);
+                }
+
+            }
         }
     }
     return (
