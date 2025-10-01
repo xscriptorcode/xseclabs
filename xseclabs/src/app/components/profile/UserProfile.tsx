@@ -59,7 +59,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
 
             if (error) {
                 console.error('Profile fetch error:', error);
-                setError('Error al cargar el perfil: ' + error.message);
+                setError('Error loading profile: ' + error.message);
                 return;
             }
 
@@ -76,7 +76,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             }
         } catch (err) {
             console.error('Unexpected error fetching profile:', err);
-            setError('Error inesperado al cargar el perfil');
+            setError('Unexpected error loading profile');
         } finally {
             setLoading(false);
         }
@@ -87,20 +87,20 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             setLoading(true);
             setError('');
 
-            // Validaciones básicas
+            // Basic validations
             if (!editForm.full_name.trim()) {
-                setError('El nombre completo es requerido');
+                setError('Full name is required');
                 setLoading(false);
                 return;
             }
 
             if (!editForm.username.trim()) {
-                setError('El nombre de usuario es requerido');
+                setError('Username is required');
                 setLoading(false);
                 return;
             }
 
-            // Verificar que el username no esté en uso por otro usuario
+            // Check if username is already in use by another user
             const { data: existingUser, error: checkError } = await supabase
                 .from('user_profiles')
                 .select('id_uuid')
@@ -109,13 +109,13 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                 .single();
 
             if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
-                setError('Error al verificar el nombre de usuario');
+                setError('Error verifying username');
                 setLoading(false);
                 return;
             }
 
             if (existingUser) {
-                setError('Este nombre de usuario ya está en uso');
+                setError('This username is already in use');
                 setLoading(false);
                 return;
             }
@@ -134,7 +134,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                 .single();
 
             if (error) {
-                setError('Error al actualizar el perfil: ' + error.message);
+                setError('Error updating profile: ' + error.message);
                 return;
             }
 
@@ -145,7 +145,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                 onProfileUpdate(data);
             }
         } catch (err) {
-            setError('Error inesperado al actualizar el perfil');
+            setError('Unexpected error updating profile');
             console.error('Error updating profile:', err);
         } finally {
             setLoading(false);
@@ -153,8 +153,8 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
     };
 
     const formatDate = (dateString: string | null) => {
-        if (!dateString) return 'No disponible';
-        return new Date(dateString).toLocaleString('es-ES', {
+        if (!dateString) return 'Not available';
+        return new Date(dateString).toLocaleString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
@@ -167,7 +167,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
         return (
             <div className="card p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
                 <div className="flex justify-center items-center">
-                    <div style={{ color: 'var(--color-muted)' }}>Cargando perfil...</div>
+                    <div style={{ color: 'var(--color-muted)' }}>Loading profile...</div>
                 </div>
             </div>
         );
@@ -188,7 +188,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <h2 style={{ color: 'var(--color-text)', margin: 0 }}>
-                    Perfil de Usuario
+                    User Profile
                 </h2>
                 <button
                     onClick={() => setIsEditing(!isEditing)}
@@ -199,7 +199,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                         padding: '0.5rem 1rem'
                     }}
                 >
-                    {isEditing ? 'Cancelar' : 'Editar'}
+                    {isEditing ? 'Cancel' : 'Edit'}
                 </button>
             </div>
 
@@ -217,9 +217,9 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             )}
 
             {!isEditing ? (
-                /* Vista de solo lectura */
+                /* Read-only view */
                 <div className="space-y-6">
-                    {/* Avatar y nombre */}
+                    {/* Avatar and name */}
                     <div className="flex items-center space-x-4">
                         <div 
                             className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold"
@@ -240,10 +240,10 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                         </div>
                         <div>
                             <h3 style={{ color: 'var(--color-text)', margin: '0 0 0.5rem 0' }}>
-                                {profile?.full_name || 'Sin nombre'}
+                                {profile?.full_name || 'No name'}
                             </h3>
                             <p style={{ color: 'var(--color-muted)', margin: 0 }}>
-                                @{profile?.username || 'sin-usuario'}
+                                @{profile?.username || 'no-username'}
                             </p>
                         </div>
                     </div>
@@ -251,18 +251,18 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                     {/* Bio */}
                     <div>
                         <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                            Biografía
+                            Biography
                         </label>
                         <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0' }}>
-                            {profile?.bio || 'Sin biografía'}
+                            {profile?.bio || 'No biography'}
                         </p>
                     </div>
 
-                    {/* Información adicional */}
+                    {/* Additional information */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                                Último acceso
+                                Last login
                             </label>
                             <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
                                 {formatDate(profile?.last_login)}
@@ -270,7 +270,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                         </div>
                         <div>
                             <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                                Miembro desde
+                                Member since
                             </label>
                             <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
                                 {formatDate(profile?.created_at)}
@@ -279,11 +279,11 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                     </div>
                 </div>
             ) : (
-                /* Vista de edición */
+                /* Edit view */
                 <div className="space-y-4">
                     <div>
                         <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                            Nombre completo *
+                            Full name *
                         </label>
                         <input
                             type="text"
@@ -295,14 +295,14 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                 border: '1px solid var(--color-border)',
                                 color: 'var(--color-text)'
                             }}
-                            placeholder="Ingresa tu nombre completo"
+                            placeholder="Enter your full name"
                             required
                         />
                     </div>
 
                     <div>
                         <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                            Nombre de usuario *
+                            Username *
                         </label>
                         <input
                             type="text"
@@ -314,14 +314,14 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                 border: '1px solid var(--color-border)',
                                 color: 'var(--color-text)'
                             }}
-                            placeholder="usuario123"
+                            placeholder="username123"
                             required
                         />
                     </div>
 
                     <div>
                         <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                            URL del avatar
+                            Avatar URL
                         </label>
                         <input
                             type="url"
@@ -333,13 +333,13 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                 border: '1px solid var(--color-border)',
                                 color: 'var(--color-text)'
                             }}
-                            placeholder="https://ejemplo.com/avatar.jpg"
+                            placeholder="https://example.com/avatar.jpg"
                         />
                     </div>
 
                     <div>
                         <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                            Biografía
+                            Biography
                         </label>
                         <textarea
                             value={editForm.bio}
@@ -352,7 +352,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                 minHeight: '100px',
                                 resize: 'vertical'
                             }}
-                            placeholder="Cuéntanos sobre ti..."
+                            placeholder="Tell us about yourself..."
                         />
                     </div>
 
@@ -365,7 +365,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                 flex: 1
                             }}
                         >
-                            {loading ? 'Guardando...' : 'Guardar Cambios'}
+                            {loading ? 'Saving...' : 'Save Changes'}
                         </button>
                         <button
                             onClick={() => {
@@ -383,7 +383,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                 flex: 1
                             }}
                         >
-                            Cancelar
+                            Cancel
                         </button>
                     </div>
                 </div>
