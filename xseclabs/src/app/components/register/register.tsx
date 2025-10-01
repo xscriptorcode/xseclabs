@@ -1,5 +1,5 @@
 'use client'
-import { useState } from "react"
+import React, { useState } from "react"
 import { supabase } from "../../../../lib/supabaseClient";
 import { useRouter } from "next/router";
 
@@ -16,6 +16,18 @@ export default function Register () {
     const [success, setSuccess] = useState("");
     const router = useRouter();
 
+    const handleRegister = async (e: React.FormEvent)=>{
+        e.preventDefault()
+            setLoading(true);
+            setError("");
+            setSuccess("");
+        
+        if (password !== ConfirmPassword){
+            setError("Use the same passord");
+            setLoading(false);
+            return;
+        }
+    }
     return (
         <div className="flex flex-col items-center m-4">
             <div className="flex flex-col gap-2 justify-center text-center items-center border border border-(--color-primary) p-8 rounded-xl w-64">    
