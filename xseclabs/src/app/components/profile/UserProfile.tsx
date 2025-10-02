@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabaseClient'
+import ClipboardIcon from '../icons/clipboard';
 
 interface UserProfileData {
     id_uuid: string;
@@ -8,9 +9,12 @@ interface UserProfileData {
     username: string | null;
     avatar_url: string | null;
     bio: string | null;
+    plan: string;
     created_at: string;
     updated_at: string;
     last_login: string | null;
+    role_type?: string;
+    role_description?: string;
 }
 
 interface UserProfileProps {
@@ -41,7 +45,6 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             setLoading(true);
             setError('');
 
-            // Usar una consulta más simple que evite problemas con RLS
             const { data, error } = await supabase
                 .from('user_profiles')
                 .select(`
@@ -50,9 +53,16 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                     username,
                     avatar_url,
                     bio,
+                    plan,
                     created_at,
                     updated_at,
-                    last_login
+                    last_login,
+                    users!inner(
+                        roles!inner(
+                            type,
+                            description
+                        )
+                    )
                 `)
                 .eq('id_uuid', userId)
                 .single();
@@ -63,16 +73,23 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                 return;
             }
 
-            setProfile(data);
+            // Transform the data to include role information
+            const profileData: UserProfileData = {
+                ...data,
+                role_type: data.users?.[0]?.roles?.[0]?.type,
+                role_description: data.users?.[0]?.roles?.[0]?.description
+            };
+
+            setProfile(profileData);
             setEditForm({
-                full_name: data.full_name || '',
-                username: data.username || '',
-                bio: data.bio || '',
-                avatar_url: data.avatar_url || ''
+                full_name: profileData.full_name || '',
+                username: profileData.username || '',
+                bio: profileData.bio || '',
+                avatar_url: profileData.avatar_url || ''
             });
 
             if (onProfileUpdate) {
-                onProfileUpdate(data);
+                onProfileUpdate(profileData);
             }
         } catch (err) {
             console.error('Unexpected error fetching profile:', err);
@@ -186,10 +203,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
     return (
         <div className="card p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 style={{ color: 'var(--color-text)', margin: 0 }}>
-                    User Profile
-                </h2>
+            <div className="flex justify-end items-center mb-6">
                 <button
                     onClick={() => setIsEditing(!isEditing)}
                     disabled={loading}
@@ -219,53 +233,163 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             {!isEditing ? (
                 /* Read-only view */
                 <div className="space-y-6">
-                    {/* Avatar and name */}
-                    <div className="flex items-center space-x-4">
-                        <div 
-                            className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold"
-                            style={{ 
-                                backgroundColor: 'var(--color-primary)',
-                                color: 'white'
-                            }}
-                        >
-                            {profile?.avatar_url ? (
-                                <img 
-                                    src={profile.avatar_url} 
-                                    alt="Avatar" 
-                                    className="w-full h-full rounded-full object-cover"
-                                />
-                            ) : (
-                                profile?.full_name?.charAt(0)?.toUpperCase() || '?'
-                            )}
+                    {/* Avatar and basic info - responsive layout */}
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:space-x-8 space-y-6 lg:space-y-0">
+                        {/* Avatar */}
+                        <div className="flex-shrink-0 flex justify-center lg:justify-start">
+                            <div 
+                                className="w-32 h-32 lg:w-60 lg:h-60 rounded-full flex items-center justify-center text-2xl font-bold"
+                                style={{ 
+                                    backgroundColor: 'var(--color-primary)',
+                                    color: 'white'
+                                }}
+                            >
+                                {profile?.avatar_url ? (
+                                    <img 
+                                        src={profile.avatar_url} 
+                                        alt="Avatar" 
+                                        className="w-full h-full rounded-full object-cover"
+                                    />
+                                ) : (
+                                    profile?.full_name?.charAt(0)?.toUpperCase() || '?'
+                                )}
+                            </div>
                         </div>
-                        <div>
-                            <h3 style={{ color: 'var(--color-text)', margin: '0 0 0.5rem 0' }}>
-                                {profile?.full_name || 'No name'}
-                            </h3>
-                            <p style={{ color: 'var(--color-muted)', margin: 0 }}>
-                                @{profile?.username || 'no-username'}
-                            </p>
-                        </div>
-                    </div>
 
-                    {/* Bio */}
-                    <div>
-                        <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
-                            Biography
-                        </label>
-                        <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0' }}>
-                            {profile?.bio || 'No biography'}
-                        </p>
+                        {/* Profile information */}
+                        <div className="flex-1 space-y-6">
+                            {/* Name and username */}
+                            <div className="text-center lg:text-left">
+                                <h3 style={{ color: 'var(--color-text)', margin: '0 0 0.5rem 0', fontSize: '1.5rem', fontWeight: '600' }}>
+                                    {profile?.full_name || 'No name'}
+                                </h3>
+                                <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-3 space-y-2 lg:space-y-0">
+                                    <p style={{ color: 'var(--color-muted)', margin: 0, fontSize: '1rem' }}>
+                                        @{profile?.username || 'no-username'}
+                                    </p>
+                                    {profile?.id_uuid && (
+                                        <div className="flex items-center space-x-2">
+                                            <span style={{ 
+                                                color: 'var(--color-muted)', 
+                                                fontSize: '0.75rem', 
+                                                fontFamily: 'monospace',
+                                                backgroundColor: 'var(--color-background-secondary)',
+                                                padding: '0.25rem 0.5rem',
+                                                borderRadius: '0.25rem',
+                                                border: '1px solid var(--color-border)'
+                                            }}>
+                                                {profile.id_uuid}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(profile.id_uuid);
+                                                    // Opcional: mostrar feedback visual
+                                                    const button = event?.target as HTMLButtonElement;
+                                                    const originalText = button.textContent;
+                                                    button.textContent = '✓';
+                                                    setTimeout(() => {
+                                                        button.textContent = originalText;
+                                                    }, 1000);
+                                                }}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    border: '1px solid var(--color-border)',
+                                                    borderRadius: '0.25rem',
+                                                    padding: '0.25rem 0.5rem',
+                                                    color: 'var(--color-muted)',
+                                                    fontSize: '0.75rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    minWidth: '2rem',
+                                                    height: '1.75rem'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'var(--color-background-secondary)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                }}
+                                                title="Copiar UUID al portapapeles"
+                                            >
+                                                    <ClipboardIcon className="w-4 h-4 text-[var(--color-text)]" />
+
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Bio */}
+                            <div>
+                                <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
+                                    Biography
+                                </label>
+                                <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0' }}>
+                                    {profile?.bio || 'No biography'}
+                                </p>
+                            </div>
+
+                            {/* Plan and Role */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
+                                        Plan
+                                    </label>
+                                    <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
+                                        <span 
+                                            style={{ 
+                                                backgroundColor: profile?.plan === 'free' ? 'var(--color-muted)' : 'var(--color-primary)',
+                                                color: 'white',
+                                                padding: '0.25rem 0.5rem',
+                                                borderRadius: '0.375rem',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '500',
+                                                textTransform: 'uppercase'
+                                            }}
+                                        >
+                                            {profile?.plan || 'free'}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
+                                        Application Role
+                                    </label>
+                                    <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
+                                        <span 
+                                            style={{ 
+                                                backgroundColor: 'var(--color-primary)',
+                                                color: 'white',
+                                                padding: '0.25rem 0.5rem',
+                                                borderRadius: '0.375rem',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '500',
+                                                textTransform: 'capitalize'
+                                            }}
+                                        >
+                                            {profile?.role_type || 'user'}
+                                        </span>
+                                        {profile?.role_description && (
+                                            <span style={{ color: 'var(--color-muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>
+                                                - {profile.role_description}
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Additional information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
                                 Last login
                             </label>
                             <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
-                                {formatDate(profile?.last_login)}
+                                {formatDate(profile?.last_login ?? null)}
                             </p>
                         </div>
                         <div>
@@ -273,7 +397,15 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                 Member since
                             </label>
                             <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
-                                {formatDate(profile?.created_at)}
+                                {formatDate(profile?.created_at ?? null)}
+                            </p>
+                        </div>
+                        <div>
+                            <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
+                                Last updated
+                            </label>
+                            <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
+                                {formatDate(profile?.updated_at ?? null)}
                             </p>
                         </div>
                     </div>
