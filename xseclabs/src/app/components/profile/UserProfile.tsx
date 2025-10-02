@@ -209,8 +209,12 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                     disabled={loading}
                     style={{
                         backgroundColor: isEditing ? 'var(--color-accent)' : 'var(--color-primary)',
+                        color: 'white',
                         fontSize: '0.875rem',
-                        padding: '0.5rem 1rem'
+                        padding: '0.5rem 1rem',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer'
                     }}
                 >
                     {isEditing ? 'Cancel' : 'Edit'}
@@ -475,16 +479,29 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                         </label>
                         <textarea
                             value={editForm.bio}
-                            onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                            onChange={(e) => {
+                                setEditForm({ ...editForm, bio: e.target.value });
+                                // Auto-resize textarea
+                                const textarea = e.target as HTMLTextAreaElement;
+                                textarea.style.height = 'auto';
+                                textarea.style.height = `${textarea.scrollHeight}px`;
+                            }}
                             className="w-full mt-1 p-3 rounded-lg"
                             style={{
                                 backgroundColor: 'var(--color-bg)',
                                 border: '1px solid var(--color-border)',
                                 color: 'var(--color-text)',
                                 minHeight: '100px',
-                                resize: 'vertical'
+                                resize: 'none',
+                                overflow: 'hidden'
                             }}
                             placeholder="Tell us about yourself..."
+                            onInput={(e) => {
+                                // Additional auto-resize on input
+                                const textarea = e.target as HTMLTextAreaElement;
+                                textarea.style.height = 'auto';
+                                textarea.style.height = `${textarea.scrollHeight}px`;
+                            }}
                         />
                     </div>
 
@@ -494,6 +511,13 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                             disabled={loading}
                             style={{
                                 backgroundColor: 'var(--color-primary)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.5rem',
+                                padding: '0.75rem 1.5rem',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
                                 flex: 1
                             }}
                         >
@@ -512,6 +536,13 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                             }}
                             style={{
                                 backgroundColor: 'var(--color-muted)',
+                                color: 'var(--color-text)',
+                                border: 'none',
+                                borderRadius: '0.5rem',
+                                padding: '0.75rem 1.5rem',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
                                 flex: 1
                             }}
                         >
