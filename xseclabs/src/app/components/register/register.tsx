@@ -1,48 +1,54 @@
-'use client'
-import { useState } from "react"
-import { supabase } from "../../../../lib/supabaseClient"
-import { useRouter } from "next/navigation"
+'use client';
 
-export default function Register () {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [fullName, setFullName] = useState("");
-    const [username, setUsername] = useState("");
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../../../lib/supabaseClient';
+import FormContainer from '../ui/FormContainer';
+import FormInput from '../ui/FormInput';
+import FormButton from '../ui/FormButton';
+import ErrorMessage from '../ui/ErrorMessage';
+import SuccessMessage from '../ui/SuccessMessage';
+import FormLink from '../ui/FormLink';
+
+export default function Register() {
+    const [fullName, setFullName] = useState('');
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
     const router = useRouter();
 
-    const handleRegister = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+        setSuccess('');
         setLoading(true);
-        setError("");
-        setSuccess("");
 
-        // Validate passwords match
         if (password !== confirmPassword) {
-            setError("Passwords do not match");
+            setError('Passwords do not match');
             setLoading(false);
             return;
         }
 
         // Validate password length
         if (password.length < 6) {
-            setError("Password must be at least 6 characters long");
+            setError('Password must be at least 6 characters long');
             setLoading(false);
             return;
         }
 
         // Validate required fields
         if (!fullName.trim()) {
-            setError("Full name is required");
+            setError('Full name is required');
             setLoading(false);
             return;
         }
 
         if (!username.trim()) {
-            setError("Username is required");
+            setError('Username is required');
             setLoading(false);
             return;
         }
@@ -77,11 +83,11 @@ export default function Register () {
                 }
             }
 
-            setSuccess("Registration successful! Please check your email to confirm your account.");
+            setSuccess('Registration successful! Please check your email to confirm your account.');
             // Redirect to login page after a delay
             setTimeout(() => {
-                router.push('/login');
-            }, 3000);
+                router.push('/profile');
+            }, 2000);
 
         } catch (err) {
             setError('An unexpected error occurred');
@@ -89,157 +95,70 @@ export default function Register () {
             setLoading(false);
         }
     };
-    
+
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4">
-            <div 
-                className="flex flex-col gap-2 justify-center text-center items-center p-8 rounded-xl w-80 max-w-md"
-                style={{
-                    backgroundColor: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-text)'
-                }}
-            >    
-                <h2 
-                    className="text-xl font-bold mb-4"
-                    style={{ color: 'var(--color-text)' }}
+        <FormContainer title="Register">
+            <ErrorMessage message={error} />
+            <SuccessMessage message={success} />
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <FormInput
+                    type="text"
+                    placeholder="Full Name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                />
+                
+                <FormInput
+                    type="text"
+                    placeholder="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                />
+                
+                <FormInput
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
+                
+                <FormInput
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                />
+                
+                <FormInput
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                />
+                
+                <FormButton 
+                    type="submit"
+                    disabled={loading}
+                    loading={loading}
+                    loadingText="Registering..."
                 >
                     Register
-                </h2>
-                
-                {error && (
-                    <div 
-                        className="text-sm mb-2 text-center p-2 rounded"
-                        style={{
-                            color: 'var(--color-error)',
-                            backgroundColor: 'var(--color-error-bg)'
-                        }}
-                    >
-                        {error}
-                    </div>
-                )}
-
-                {success && (
-                    <div 
-                        className="text-sm mb-2 text-center p-2 rounded"
-                        style={{
-                            color: 'var(--color-success)',
-                            backgroundColor: 'var(--color-priority-low-bg)'
-                        }}
-                    >
-                        {success}
-                    </div>
-                )}
-
-                <form onSubmit={handleRegister} className="flex flex-col gap-2 w-full">
-                    <input 
-                        type="text"
-                        placeholder="Full name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        className="p-2 rounded-xl"
-                        style={{
-                            backgroundColor: 'var(--color-background)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text)'
-                        }}
-                        required
-                    />
-                    <input 
-                        type="text"
-                        placeholder="Username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="p-2 rounded-xl"
-                        style={{
-                            backgroundColor: 'var(--color-background)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text)'
-                        }}
-                        required
-                    />
-                    <input 
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="p-2 rounded-xl"
-                        style={{
-                            backgroundColor: 'var(--color-background)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text)'
-                        }}
-                        required
-                    />
-                    <input 
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="p-2 rounded-xl"
-                        style={{
-                            backgroundColor: 'var(--color-background)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text)'
-                        }}
-                        required
-                        minLength={6}
-                    />
-                    <input 
-                        type="password"
-                        placeholder="Confirm password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="p-2 rounded-xl"
-                        style={{
-                            backgroundColor: 'var(--color-background)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text)'
-                        }}
-                        required
-                        minLength={6}
-                    />
-                    <button 
-                        type="submit"
-                        disabled={loading}
-                        className="px-2 py-2 rounded hover:opacity-90 disabled:opacity-50 p-4 transition-opacity"
-                        style={{
-                            backgroundColor: loading ? 'var(--color-muted)' : 'var(--color-muted)',
-                            color: 'white',
-                            border: 'none'
-                        }}
-                    >
-                        {loading ? 'Registering...' : 'Register'}
-                    </button>
-                </form>
-                
-                <p 
-                    className="text-xs"
-                    style={{ color: 'var(--color-text-secondary)' }}
-                >
-                    Already have an account? 
-                    <a 
-                        className="hover:opacity-80 ml-1"
-                        href="/login"
-                        style={{ color: 'var(--color-primary)' }}
-                    >
-                        <strong><em>Sign in</em></strong>
-                    </a>
-                </p>
-                <p 
-                    className="text-xs"
-                    style={{ color: 'var(--color-text-secondary)' }}
-                >
-                    Forgot your password? 
-                    <a 
-                        className="hover:opacity-80 ml-1"
-                        href="#"
-                        style={{ color: 'var(--color-primary)' }}
-                    >
-                        <strong><em>Recover</em></strong>
-                    </a>
-                </p>
-            </div>
-        </div>
-    )
+                </FormButton>
+            </form>
+            
+            <FormLink 
+                text="Already have an account?"
+                linkText="Login here"
+                href="/login"
+            />
+        </FormContainer>
+    );
 }
