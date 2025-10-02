@@ -7,6 +7,8 @@ interface UserProfileData {
     id_uuid: string;
     full_name: string | null;
     username: string | null;
+    email: string | null;
+    phone: string | null;
     avatar_url: string | null;
     bio: string | null;
     plan: string;
@@ -31,6 +33,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
         full_name: '',
         username: '',
         bio: '',
+        phone: '',
         avatar_url: ''
     });
 
@@ -45,27 +48,39 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             setLoading(true);
             setError('');
 
+            // Obtener el email del usuario autenticado
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            
+            if (authError) {
+                console.error('Auth error:', authError);
+                setError('Error getting user: ' + authError.message);
+                return;
+            }
+
             const { data, error } = await supabase
-                .from('user_profiles')
-                .select(`
-                    id_uuid,
-                    full_name,
-                    username,
-                    avatar_url,
-                    bio,
-                    plan,
-                    created_at,
-                    updated_at,
-                    last_login,
-                    users!inner(
-                        roles!inner(
-                            type,
-                            description
-                        )
+            .from('user_profiles')
+            .select(`
+                id_uuid,
+                full_name,
+                username,
+                avatar_url,
+                bio,
+                phone,
+                plan,
+                created_at,
+                updated_at,
+                last_login,
+                users!inner(
+                    roles_id,
+                    is_active,
+                    roles(
+                        type,
+                        description
                     )
-                `)
-                .eq('id_uuid', userId)
-                .single();
+                )
+            `)
+            .eq('id_uuid', userId)
+            .single();
 
             if (error) {
                 console.error('Profile fetch error:', error);
@@ -76,6 +91,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
             // Transform the data to include role information
             const profileData: UserProfileData = {
                 ...data,
+                email: user?.email || null, // Obtener email del usuario autenticado
                 role_type: data.users?.[0]?.roles?.[0]?.type,
                 role_description: data.users?.[0]?.roles?.[0]?.description
             };
@@ -85,6 +101,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                 full_name: profileData.full_name || '',
                 username: profileData.username || '',
                 bio: profileData.bio || '',
+                phone: profileData.phone || '',
                 avatar_url: profileData.avatar_url || ''
             });
 
@@ -143,6 +160,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                     full_name: editForm.full_name.trim(),
                     username: editForm.username.trim(),
                     bio: editForm.bio.trim() || null,
+                    phone: editForm.phone.trim() || null,
                     avatar_url: editForm.avatar_url.trim() || null,
                     updated_at: new Date().toISOString()
                 })
@@ -271,6 +289,106 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                     <p style={{ color: 'var(--color-muted)', margin: 0, fontSize: '1rem' }}>
                                         @{profile?.username || 'no-username'}
                                     </p>
+                                    {profile?.email && (
+                                        <div className="flex items-center space-x-2">
+                                            <span style={{ 
+                                                color: 'var(--color-muted)', 
+                                                fontSize: '0.875rem', 
+                                                fontFamily: 'monospace',
+                                                backgroundColor: 'var(--color-background-secondary)',
+                                                padding: '0.25rem 0.5rem',
+                                                borderRadius: '0.25rem',
+                                                border: '1px solid var(--color-border)'
+                                            }}>
+                                                {profile.email}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(profile.email!);
+                                                    // Opcional: mostrar feedback visual
+                                                    const button = event?.target as HTMLButtonElement;
+                                                    const originalText = button.textContent;
+                                                    button.textContent = '✓';
+                                                    setTimeout(() => {
+                                                        button.textContent = originalText;
+                                                    }, 1000);
+                                                }}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    border: '1px solid var(--color-border)',
+                                                    borderRadius: '0.25rem',
+                                                    padding: '0.25rem 0.5rem',
+                                                    color: 'var(--color-muted)',
+                                                    fontSize: '0.75rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    minWidth: '2rem',
+                                                    height: '1.75rem'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'var(--color-background-secondary)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                }}
+                                                title="Copy email"
+                                            >
+                                                <ClipboardIcon className="w-4 h-4 text-[var(--color-text)]" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {profile?.phone && (
+                                        <div className="flex items-center space-x-2">
+                                            <span style={{ 
+                                                color: 'var(--color-muted)', 
+                                                fontSize: '0.875rem', 
+                                                fontFamily: 'monospace',
+                                                backgroundColor: 'var(--color-background-secondary)',
+                                                padding: '0.25rem 0.5rem',
+                                                borderRadius: '0.25rem',
+                                                border: '1px solid var(--color-border)'
+                                            }}>
+                                                {profile.phone}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(profile.phone!);
+                                                    // Opcional: mostrar feedback visual
+                                                    const button = event?.target as HTMLButtonElement;
+                                                    const originalText = button.textContent;
+                                                    button.textContent = '✓';
+                                                    setTimeout(() => {
+                                                        button.textContent = originalText;
+                                                    }, 1000);
+                                                }}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    border: '1px solid var(--color-border)',
+                                                    borderRadius: '0.25rem',
+                                                    padding: '0.25rem 0.5rem',
+                                                    color: 'var(--color-muted)',
+                                                    fontSize: '0.75rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    minWidth: '2rem',
+                                                    height: '1.75rem'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'var(--color-background-secondary)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                }}
+                                                title="Copy phone number"
+                                            >
+                                                <ClipboardIcon className="w-4 h-4 text-[var(--color-text)]" />
+                                            </button>
+                                        </div>
+                                    )}
                                     {profile?.id_uuid && (
                                         <div className="flex items-center space-x-2">
                                             <span style={{ 
@@ -315,7 +433,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                                 onMouseLeave={(e) => {
                                                     e.currentTarget.style.backgroundColor = 'transparent';
                                                 }}
-                                                title="Copiar UUID al portapapeles"
+                                                title="Copy UUID"
                                             >
                                                     <ClipboardIcon className="w-4 h-4 text-[var(--color-text)]" />
 
@@ -326,13 +444,23 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                             </div>
 
                             {/* Bio */}
-                            <div>
+                            <div style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
                                 <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
                                     Biography
                                 </label>
-                                <p style={{ color: 'var(--color-text)', margin: '0.5rem 0 0 0' }}>
+                                <div style={{ 
+                                    color: 'var(--color-text)', 
+                                    margin: '0.5rem 0 0 0',
+                                    width: '100%',
+                                    maxWidth: '100%',
+                                    wordBreak: 'break-all',
+                                    overflowWrap: 'anywhere',
+                                    whiteSpace: 'pre-wrap',
+                                    lineHeight: '1.5',
+                                    boxSizing: 'border-box'
+                                }}>
                                     {profile?.bio || 'No biography'}
-                                </p>
+                                </div>
                             </div>
 
                             {/* Plan and Role */}
@@ -475,6 +603,24 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
 
                     <div>
                         <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
+                            Phone Number
+                        </label>
+                        <input
+                            type="tel"
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                            className="w-full mt-1 p-3 rounded-lg"
+                            style={{
+                                backgroundColor: 'var(--color-bg)',
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-text)'
+                            }}
+                            placeholder="+1 (555) 123-4567"
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontWeight: '500' }}>
                             Biography
                         </label>
                         <textarea
@@ -531,6 +677,7 @@ export default function UserProfile({ userId, onProfileUpdate }: UserProfileProp
                                     full_name: profile?.full_name || '',
                                     username: profile?.username || '',
                                     bio: profile?.bio || '',
+                                    phone: profile?.phone || '',
                                     avatar_url: profile?.avatar_url || ''
                                 });
                             }}
