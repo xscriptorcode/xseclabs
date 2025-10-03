@@ -6,7 +6,7 @@ export default function Footer () {
             borderTop: '1px solid var (--color border)',
             color: 'var(--color-text-secondary)'
         }}>
-            <p>Xseclabs / X©</p>
+            <p>X© Sec Labs</p>
         </div>
     )
 }
