@@ -11,3 +11,6 @@ Cybersecurity Consultation Tool
     - Typescript
     - Next.js
     - Tailwind
+
+- Backend
+    - Supabase
